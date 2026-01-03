@@ -1,2 +1,2 @@
 # homebrew-chat-a8c-overlay
-Let's you use chat.a8c.com more easily.
+macOS overlay application for chat.a8c.com with Control+Space hotkey
