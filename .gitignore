@@ -208,3 +208,10 @@ __marimo__/
 
 # macOS
 .DS_Store
+
+# DMG Builder - local config with credentials (created from sample-config.sh)
+dmg-builder/config.sh
+
+# DMG Builder - build artifacts (should be in dist/ but just in case)
+*.dmg
+*.zip

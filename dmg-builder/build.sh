@@ -92,9 +92,9 @@ find dist/$APP_NAME.app -type f -name "*.dylib" -exec codesign --deep --force --
 # Codesign the app itself
 codesign --deep --force --verify --verbose --options runtime --timestamp --sign "$SIGNATURE" dist/$APP_NAME.app
 # Create a ZIP for notary submission
-ditto -c -k --keepParent dist/$APP_NAME.app $APP_NAME.zip
+ditto -c -k --keepParent dist/$APP_NAME.app dist/$APP_NAME.zip
 # Submit for notarization
-xcrun notarytool submit $APP_NAME.zip --keychain-profile "$KEYCHAIN_PROFILE" --wait
+xcrun notarytool submit dist/$APP_NAME.zip --keychain-profile "$KEYCHAIN_PROFILE" --wait
 
 # # Check the log from notarization
 # xcrun notarytool log $NOTARIZATION_ID --keychain-profile "$KEYCHAIN_PROFILE" | less
@@ -104,4 +104,4 @@ spctl -a -vvv -t exec dist/$APP_NAME.app
 # Staple the permissions to the .app
 xcrun stapler staple dist/$APP_NAME.app
 # Create a DMG that provides an easy-installer
-create-dmg --volname "$APP_NAME" --window-size 600 300 --icon-size 100 --app-drop-link 400 150 $APP_NAME.dmg dist/$APP_NAME.app
+create-dmg --volname "$APP_NAME" --window-size 600 300 --icon-size 100 --app-drop-link 400 150 dist/$APP_NAME.dmg dist/$APP_NAME.app
