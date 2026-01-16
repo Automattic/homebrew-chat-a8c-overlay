@@ -9,16 +9,15 @@ from WebKit import *
 from Quartz import *
 from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
 from Foundation import NSObject, NSURL, NSURLRequest, NSDate
+from ApplicationServices import AXIsProcessTrusted
 
 # Local libraries
 from .constants import (
     APP_TITLE,
     CORNER_RADIUS,
     DRAG_AREA_HEIGHT,
-    LOGO_BLACK_PATH,
-    LOGO_WHITE_PATH,
+    MENU_ICON_PATH,
     FRAME_SAVE_NAME,
-    STATUS_ITEM_CONTEXT,
     WEBSITE,
     LAUNCHER_TRIGGER,
 )
@@ -91,6 +90,8 @@ class AppDelegate(NSObject):
             config
         )
         self.webview.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)  # Resizes with window
+        # Set navigation delegate to handle link clicks
+        self.webview.setNavigationDelegate_(self)
         # Set a custom user agent
         safari_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
         self.webview.setCustomUserAgent_(safari_user_agent)
@@ -141,21 +142,14 @@ class AppDelegate(NSObject):
         """
         user_script = WKUserScript.alloc().initWithSource_injectionTime_forMainFrameOnly_(script, WKUserScriptInjectionTimeAtDocumentEnd, True)
         user_content_controller.addUserScript_(user_script)
-        # Create status bar item with logo
+        # Create status bar item with template icon (auto-adapts to light/dark mode)
         self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSSquareStatusItemLength)
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        logo_white_path = os.path.join(script_dir, LOGO_WHITE_PATH)
-        self.logo_white = NSImage.alloc().initWithContentsOfFile_(logo_white_path)
-        self.logo_white.setSize_(NSSize(18, 18))
-        logo_black_path = os.path.join(script_dir, LOGO_BLACK_PATH)
-        self.logo_black = NSImage.alloc().initWithContentsOfFile_(logo_black_path)
-        self.logo_black.setSize_(NSSize(18, 18))
-        # Set the initial logo image based on the current appearance
-        self.updateStatusItemImage()
-        # Observe system appearance changes
-        self.status_item.button().addObserver_forKeyPath_options_context_(
-            self, "effectiveAppearance", NSKeyValueObservingOptionNew, STATUS_ITEM_CONTEXT
-        )
+        menu_icon_path = os.path.join(script_dir, MENU_ICON_PATH)
+        menu_icon = NSImage.alloc().initWithContentsOfFile_(menu_icon_path)
+        menu_icon.setSize_(NSSize(18, 18))
+        menu_icon.setTemplate_(True)  # Makes macOS auto-tint for light/dark mode
+        self.status_item.button().setImage_(menu_icon)
         # Create status bar menu
         menu = NSMenu.alloc().init()
         # Create and configure menu items with explicit targets
@@ -228,6 +222,11 @@ class AppDelegate(NSObject):
             # CFRunLoopRun() # Start the run loop (causes HANG as of Tahoe)
         else:
             print("Failed to create event tap. Check Accessibility permissions.")
+        # Check accessibility permissions and prompt user if needed
+        self.accessibility_granted = AXIsProcessTrusted()
+        if not self.accessibility_granted:
+            self.showAccessibilityPrompt()
+            self.startAccessibilityMonitor()
         # Load the custom launch trigger if the user set it.
         load_custom_launcher_trigger(self)
         # Set the delegate of the window to this parent application.
@@ -363,20 +362,87 @@ class AppDelegate(NSObject):
                 color = NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0)
                 self.drag_area.setBackgroundColor_(color)
 
-    # Logic for checking what color the logo in the status bar should be, and setting appropriate logo.
-    def updateStatusItemImage(self):
-        appearance = self.status_item.button().effectiveAppearance()
-        if appearance.bestMatchFromAppearancesWithNames_([NSAppearanceNameAqua, NSAppearanceNameDarkAqua]) == NSAppearanceNameDarkAqua:
-            self.status_item.button().setImage_(self.logo_white)
-        else:
-            self.status_item.button().setImage_(self.logo_black)
 
-    # Observer that is triggered whenever the color of the status bar logo might need to be updated.
-    def observeValueForKeyPath_ofObject_change_context_(self, keyPath, object, change, context):
-        if context == STATUS_ITEM_CONTEXT and keyPath == "effectiveAppearance":
-            self.updateStatusItemImage()
+    # Navigation delegate method to handle link clicks
+    def webView_decidePolicyForNavigationAction_decisionHandler_(self, webView, navigationAction, decisionHandler):
+        request = navigationAction.request()
+        url = request.URL()
+        url_string = url.absoluteString() if url else ""
+        # Get the navigation type (link click, form submit, etc.)
+        nav_type = navigationAction.navigationType()
+        # WKNavigationTypeLinkActivated = 0 (user clicked a link)
+        # Check if this is a user-initiated link click
+        if nav_type == 0:  # Link activated by user click
+            # Check if the URL is external (not chat.a8c.com)
+            host = url.host() if url else None
+            if host and host not in ["chat.a8c.com", "www.chat.a8c.com"]:
+                # Open external link in default browser
+                print(f"Opening external link in browser: {url_string}", flush=True)
+                NSWorkspace.sharedWorkspace().openURL_(url)
+                # Cancel the navigation in the webview
+                decisionHandler(0)  # WKNavigationActionPolicyCancel = 0
+                return
+        # Allow all other navigations (internal links, initial page load, etc.)
+        decisionHandler(1)  # WKNavigationActionPolicyAllow = 1
 
-    # System triggered appearance changes that might affect logo color.
-    def appearanceDidChange_(self, notification):
-        # Update the logo image when the system appearance changes
-        self.updateStatusItemImage()
+    # Show initial prompt explaining accessibility permissions are needed
+    def showAccessibilityPrompt(self):
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("Accessibility Permission Required")
+        alert.setInformativeText_(
+            f"{APP_TITLE} needs Accessibility permissions to detect your keyboard shortcut.\n\n"
+            "Please grant permission in System Settings, then the app will prompt you to restart."
+        )
+        alert.addButtonWithTitle_("Open System Settings")
+        alert.addButtonWithTitle_("Later")
+        alert.setAlertStyle_(NSAlertStyleWarning)
+        response = alert.runModal()
+        if response == NSAlertFirstButtonReturn:
+            # Open System Settings to Accessibility pane
+            url = NSURL.URLWithString_("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            NSWorkspace.sharedWorkspace().openURL_(url)
+
+    # Start a timer to periodically check if accessibility permissions were granted
+    def startAccessibilityMonitor(self):
+        self.accessibility_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            2.0,  # Check every 2 seconds
+            self,
+            "checkAccessibilityStatus:",
+            None,
+            True
+        )
+
+    # Timer callback to check if accessibility permissions are now granted
+    def checkAccessibilityStatus_(self, timer):
+        if AXIsProcessTrusted():
+            # Permissions granted! Stop the timer and prompt for restart
+            timer.invalidate()
+            self.accessibility_timer = None
+            self.showRestartPrompt()
+
+    # Show prompt asking user to restart the app after permissions were granted
+    def showRestartPrompt(self):
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("Restart Required")
+        alert.setInformativeText_(
+            "Accessibility permissions have been granted.\n\n"
+            f"Please restart {APP_TITLE} for the keyboard shortcut to work."
+        )
+        alert.addButtonWithTitle_("Restart Now")
+        alert.addButtonWithTitle_("Later")
+        alert.setAlertStyle_(NSAlertStyleInformational)
+        response = alert.runModal()
+        if response == NSAlertFirstButtonReturn:
+            self.restartApp_(None)
+
+    # Restart the application
+    def restartApp_(self, sender):
+        # Get the path to the current application
+        bundle_path = NSBundle.mainBundle().bundlePath()
+        # Use NSTask to relaunch
+        task = NSTask.alloc().init()
+        task.setLaunchPath_("/usr/bin/open")
+        task.setArguments_(["-n", bundle_path])
+        task.launch()
+        # Terminate current instance
+        NSApp.terminate_(None)

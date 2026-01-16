@@ -3,7 +3,9 @@
 # Minimal local build (no signing/notarization)
 set -euo pipefail
 
-APP_NAME="macos-a8c-chat-overlay"
+# Dev build uses different app name to avoid conflicts with installed version
+export DEV_BUILD=1
+APP_NAME="LibreChat A8C Overlay"
 
 # Determine which architecture(s) to target (defaults to universal binary).
 PY2APP_ARCH=${PY2APP_ARCH:-universal2}
@@ -35,7 +37,7 @@ pushd .. >/dev/null
 python setup.py py2app --arch "$PY2APP_ARCH" --dist-dir="dmg-builder/dist" --bdist-base="dmg-builder/build"
 # Ad-hoc sign just the bundle (skip strict validation on nested libs).
 echo "Code signing the local .app so that permission settings work as expected."
-codesign --force --sign - dmg-builder/dist/macos-a8c-chat-overlay.app
+codesign --force --sign - "dmg-builder/dist/${APP_NAME}.app"
 
 # Exit the directory.
 popd >/dev/null

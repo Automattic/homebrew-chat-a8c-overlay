@@ -1,29 +1,29 @@
 cask "macos-a8c-chat-overlay" do
-  version "0.0.18"
-  sha256 "0fe7c51c8bd15b0c33668965c9998ea8c44c743336f399be3f9cbee843d0a977"
+  version "0.0.19"
+  sha256 "ab2868c09cbe0eb23e422b94a8d6884ecafc9fcdb0e9d92e76e9556714d56838"
 
-  url "https://github.com/Automattic/homebrew-chat-a8c-overlay/releases/download/v#{version}/macos-a8c-chat-overlay.zip"
-  name "A8C Chat Overlay"
-  desc "macOS overlay application for chat.a8c.com with Control+Space hotkey"
+  url "https://github.com/Automattic/homebrew-chat-a8c-overlay/releases/download/v#{version}/LibreChat-A8C-Overlay.zip"
+  name "LibreChat A8C Overlay"
+  desc "macOS overlay application for chat.a8c.com with customizable hotkey"
   homepage "https://github.com/Automattic/homebrew-chat-a8c-overlay"
 
   # Requires macOS 10.15 or later (based on universal2 build)
   depends_on macos: ">= :catalina"
 
-  app "macos-a8c-chat-overlay.app"
+  app "LibreChat A8C Overlay.app"
 
-  # Optional: Auto-enable accessibility and install startup item
+  # Launch app after installation
   postflight do
     system_command "open",
-                   args: ["-a", "#{appdir}/macos-a8c-chat-overlay.app"]
+                   args: ["-a", "#{appdir}/LibreChat A8C Overlay.app"]
   end
 
   # Clean up on uninstall
-  uninstall quit: "com.github-tchlux.macosa8c-chatoverlay",
-            launchctl: "com.github-tchlux.macosa8c-chatoverlay"
+  uninstall quit: "com.automattic.librechat-a8c-overlay",
+            launchctl: "com.automattic.librechat-a8c-overlay"
 
   zap trash: [
     "~/Library/Logs/macos-a8c-chat-overlay",
-    "~/Library/Preferences/com.github-tchlux.macosa8c-chatoverlay.plist",
+    "~/Library/Preferences/com.automattic.librechat-a8c-overlay.plist",
   ]
 end

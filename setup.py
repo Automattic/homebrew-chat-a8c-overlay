@@ -66,14 +66,20 @@ if __name__ == "__main__":
             classifiers=classifiers
         )
     elif 'py2app' in sys.argv:
+        # Dev builds get -dev suffix on bundle ID to avoid conflicts with installed version
+        dev_build = os.environ.get('DEV_BUILD', '0') == '1'
+        bundle_name = "LibreChat A8C Overlay"
+        bundle_id = 'com.automattic.librechat-a8c-overlay-dev' if dev_build else 'com.automattic.librechat-a8c-overlay'
+        app_name = "LibreChat A8C Overlay"
         setup(
+            name=app_name,  # This determines the .app filename
             app=[f'run.py'],  # Entry point to your application
             options={
                 'py2app': {
                     'iconfile': f'{package}/logo/icon.icns',  # Path to your app icon
                     'plist': {
-                        'CFBundleName': package_name,
-                        'CFBundleIdentifier': f'com.github-{git_username}.macos{source_page}overlay',  # Unique identifier
+                        'CFBundleName': bundle_name,
+                        'CFBundleIdentifier': bundle_id,  # Unique identifier
                         'LSUIElement': True,  # Hide from Dock and Cmd+Tab
                         'NSMicrophoneUsageDescription': 'Microphone access is needed for voice mode features.',
                         'NSInputMonitoringUsageDescription': 'Needed to listen for your chosen keyboard trigger to show/hide the overlay.',
@@ -84,7 +90,8 @@ if __name__ == "__main__":
                     'packages': [package],
                     'resources': [
                         f"{package}/logo/logo_white.png",
-                        f"{package}/logo/logo_black.png"
+                        f"{package}/logo/logo_black.png",
+                        f"{package}/logo/menu_icon_18x18.png"
                     ],
                 }
             },

@@ -1,6 +1,5 @@
 # Python libraries
 import json
-import time
 from pathlib import Path
 
 # Apple libraries
@@ -159,7 +158,7 @@ def set_custom_launcher_trigger(app):
         print(f"  {trigger_str}", flush=True)
         # Update only the trigger display, not the message label
         trigger_display.setStringValue_(trigger_str)
-        # Remove the overlay after 3 seconds
+        # Remove the overlay after 1.5 seconds
         overlay_view.performSelector_withObject_afterDelay_("removeFromSuperview", None, 1.5)
         # Reset the handler
         global handle_new_trigger

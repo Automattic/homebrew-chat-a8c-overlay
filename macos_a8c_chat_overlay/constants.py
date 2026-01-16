@@ -11,6 +11,7 @@ from Quartz import (
 WEBSITE = "https://chat.a8c.com"
 LOGO_WHITE_PATH = "logo/logo_white.png"
 LOGO_BLACK_PATH = "logo/logo_black.png"
+MENU_ICON_PATH = "logo/menu_icon_18x18.png"
 FRAME_SAVE_NAME = "A8CChatWindowFrame"
 APP_TITLE = "A8C Chat"
 PERMISSION_CHECK_EXIT = 1
