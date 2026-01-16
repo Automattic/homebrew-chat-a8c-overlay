@@ -1,18 +1,24 @@
-# LibreChat A8C Overlay
+<h1 align="center"> LibreChat A8C Overlay </h1>
 
 A macOS overlay application for pinning `chat.a8c.com` to a dedicated window with a customizable global keyboard shortcut.
 
-![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
-![Architecture](https://img.shields.io/badge/architecture-universal%20(arm64%20%7C%20x86__64)-blue)
-![Version](https://img.shields.io/badge/version-0.0.19-green)
+<p>
+
+
+  
+</p>
 
 ---
-
 <p align="center">
   <a href="https://github.com/Automattic/homebrew-chat-a8c-overlay/releases/latest/download/LibreChat-A8C-Overlay.zip">
-    <img src="https://img.shields.io/badge/Download-LibreChat%20A8C%20Overlay-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download LibreChat A8C Overlay" height="60">
+    <img
+      src="https://img.shields.io/badge/Download-LibreChat%20A8C%20Overlay-blue?style=for-the-badge&logo=apple&logoColor=white"
+      alt="Download LibreChat A8C Overlay"
+      style="height: 90px;"
+    >
   </a>
 </p>
+
 
 <p align="center">
   <strong>macOS 10.15+ &bull; Universal Binary (Intel & Apple Silicon)</strong><br>
@@ -24,89 +30,224 @@ A macOS overlay application for pinning `chat.a8c.com` to a dedicated window wit
 ## Features
 
 - Dedicated floating window for chat.a8c.com
-- **Control+Space** global keyboard shortcut to show/hide (customizable)
+- `Control+Space` global keyboard shortcut to show/hide **(customizable)**
 - Menu bar icon for quick access
 - Automatically saves window position and size
-- External links open in your default browser
+- Open LibreChat from anyplace
 - Light/Dark mode adaptive menu bar icon
-- Universal binary (supports both Intel and Apple Silicon)
-- Auto-prompts for restart after granting Accessibility permissions
+- Remembers your last prompt and conversation
+- Easy access to all the available agents
 
 ---
+<h1 align="center"> Installation </h1>
 
-## Installation
 
-Choose one of the following methods:
 
-### Method 1: Direct Download (Recommended for most users)
+<h2 align="center"> Method 1: Direct Download (Recommended for most users) </h2>
 
-This is the easiest way to install if you don't have Homebrew or prefer not to use the Terminal.
+<p align="center"><sub>
+  This is the easiest way to install if you don't have Homebrew or prefer not to use the Terminal.
+</sub></p>
 
-#### Step 1: Download the App
 
-Click the download button above, or [click here to download](https://github.com/Automattic/homebrew-chat-a8c-overlay/releases/latest/download/LibreChat-A8C-Overlay.zip).
+<br><br>
+<h3 align="center"> Step 1: Download the App
+ </h3>
+ 
+<p align="center">
+  <a href="https://github.com/Automattic/homebrew-chat-a8c-overlay/releases/latest/download/LibreChat-A8C-Overlay.zip">
+    <img
+      src="https://img.shields.io/badge/Download-LibreChat%20A8C%20Overlay-blue?style=for-the-badge&logo=apple&logoColor=white"
+      alt="Download LibreChat A8C Overlay"
+      style="height: 30px; vertical-align: middle;"
+    >
+  </a>
+  <br><br>
+  Click the button above or
+  <a href="https://github.com/Automattic/homebrew-chat-a8c-overlay/releases/latest/download/LibreChat-A8C-Overlay.zip">
+    click here to download
+  </a>.
+</p>
 
-#### Step 2: Extract and Move to Applications
+  <br><br><br>
 
-1. Open your **Downloads** folder
-2. Double-click `LibreChat-A8C-Overlay.zip` to extract it
-3. Drag `LibreChat A8C Overlay.app` to your **Applications** folder
 
-<!-- TODO: Add screenshot showing drag to Applications -->
 
-#### Step 3: Open the App (First Time Security Prompt)
+<h3 align="center"> Step 2: Extract and Move to Applications </h3>
 
-Since the app is not from the Mac App Store, macOS will show a security warning the first time you open it.
+<table>
+  <tr>
+    <td width="40%" valign="middle" style="padding-right: 16px;">
 
-1. Double-click `LibreChat A8C Overlay.app` in your Applications folder
-2. You'll see a message saying the app "cannot be opened because the developer cannot be verified"
-3. Click **Cancel** (don't click "Move to Trash")
+1. Open your **Downloads** folder  
+2. Double-click `LibreChat-A8C-Overlay.zip` to extract it  
+3. Drag `LibreChat A8C Overlay.app` to your **Applications** folder  
 
-<!-- TODO: Add screenshot of security warning -->
+   </td>
+    <td width="60%" valign="top">
 
-#### Step 4: Allow the App in Security Settings
+https://github.com/user-attachments/assets/5eda1817-47f6-4e85-b807-a00c9a72d45c
 
-1. Open **System Settings** (or System Preferences on older macOS)
-2. Go to **Privacy & Security**
-3. Scroll down to the **Security** section
-4. You'll see a message about "LibreChat A8C Overlay" being blocked
-5. Click **Open Anyway**
-6. Enter your password or use Touch ID when prompted
-7. Click **Open** in the confirmation dialog
+<sub>▶️ Step 2 walkthrough</sub>
 
-<!-- TODO: Add gif showing Security settings flow -->
+   </td>
+  </tr>
+</table>
 
-#### Step 5: Grant Accessibility Permissions
+
+  <br><br><br>
+
+
+
+
+<h3 align="center"> Step 3: Open the App </h3>
+
+<table>
+  <tr>
+    <td width="60%" valign="top" style="padding-right: 16px;">
+
+https://github.com/user-attachments/assets/10f02e22-a93c-400c-ac45-4811d54872cf
+
+<sub>▶️ Step 3 walkthrough</sub>
+
+   </td>
+    <td width="40%" valign="middle">
+
+1. Open your **Applications** folder  
+2. Double-click **LibreChat A8C Overlay.app**  
+3. If macOS blocks it, go to **System Settings → Privacy &amp; Security** and click **Open Anyway**
+
+   </td>
+  </tr>
+</table>
+
+
+
+  <br><br><br>
+
+
+
+
+<h3 align="center"> Step 4: Allow the App in Security Settings </h3>
+
+<table>
+  <tr>
+    <td width="40%" valign="middle" style="padding-right: 16px;">
+
+1. Open **System Settings** (or System Preferences on older macOS)  
+2. Go to **Privacy &amp; Security**  
+3. Scroll down to the **Security** section  
+4. You'll see a message about "LibreChat A8C Overlay" being blocked  
+5. Click **Open Anyway**  
+6. Enter your password or use Touch ID when prompted  
+7. Click **Open** in the confirmation dialog  
+
+   </td>
+    <td width="60%" valign="top">
+
+https://github.com/user-attachments/assets/bfb02426-599e-44af-b926-ed0c76276eb9
+
+<sub>▶️ Step 4 walkthrough</sub>
+
+   </td>
+  </tr>
+</table>
+
+
+
+
+  <br><br><br>
+
+
+
+
+
+<h3 align="center"> Step 5: Grant Accessibility Permissions </h3>
+
+<table>
+  <tr>
+    <td width="40%" valign="middle" style="padding-right: 16px;">
 
 The app needs Accessibility permissions to detect your keyboard shortcut. When you first open the app:
 
-1. A dialog will appear explaining that Accessibility permissions are required
-2. Click **Open System Settings**
-3. In the Accessibility list, find **LibreChat A8C Overlay**
-4. Toggle the switch **ON** to enable it
-5. The app will detect the permission change and prompt you to restart
-6. Click **Restart Now**
+1. A dialog will appear explaining that Accessibility permissions are required  
+2. Click **Open System Settings**  
+3. In the Accessibility list, find **LibreChat A8C Overlay**  
+4. Toggle the switch **ON** to enable it  
+5. The app will detect the permission change and prompt you to restart  
+6. Click **Restart Now**  
 
-<!-- TODO: Add gif showing Accessibility permission flow -->
+   </td>
+    <td width="60%" valign="top">
 
-#### Step 6: Login with Your Credentials
+https://github.com/user-attachments/assets/bc4fb716-6efb-4baa-a5e6-7f9ce43fccfb
+
+<sub>▶️ Step 5 walkthrough</sub>
+
+   </td>
+  </tr>
+</table>
+
+
+
+  <br><br><br>
+
+
+
+<h3 align="center"> Step 6: Login with Your Credentials </h3>
+
+<table>
+  <tr>
+    <td width="40%" valign="middle" style="padding-right: 16px;">
 
 After the app restarts, you'll see the chat.a8c.com login page. Enter your Matticspace credentials to log in.
 
-<!-- Reuse existing screenshot -->
-![Login Screen](https://github.com/user-attachments/assets/b322b0f9-0682-4ddf-993d-6ad55b3bb7bb)
+   </td>
+    <td width="60%" valign="top">
 
-#### Step 7: You're Done!
+https://github.com/user-attachments/assets/9e081939-42ab-4c98-b454-349fcf7e8f1a
+
+<sub>▶️ Step 6 login with matticspace credentials</sub>
+
+   </td>
+  </tr>
+</table>
+
+<br><br><br>
+
+<h3 align="center"> Step 7: You are done! </h3>
+
+<table>
+  <tr>
+    <td width="40%" valign="middle" style="padding-right: 16px;">
+
+The app needs Accessibility permissions to detect your keyboard shortcut. When you first open the app:
 
 Press **Control+Space** anywhere on your Mac to show or hide the chat overlay.
 
+   </td>
+    <td width="60%" valign="top">
+
+https://github.com/user-attachments/assets/1cf0e54a-0697-4011-9e74-8515af493606
+
+<sub>▶️ Step 7 shortcut working</sub>
+
+   </td>
+  </tr>
+</table>
+
+---
+  <br><br><br>  <br><br>
 ---
 
-### Method 2: Using Homebrew
+<h1 align="center"> Method 2: Using Homebrew </h1>
 
+  <br><br>
 For users comfortable with the Terminal, Homebrew provides automatic updates.
-
-#### Step 1: Install via Homebrew
+  
+  <br><br><br><br>
+  
+### Step 1: Install via Homebrew
 
 Open Terminal and run the following commands:
 
@@ -122,7 +263,9 @@ After running these commands, it should look something like this:
 
 <img width="608" height="396" alt="Homebrew installation" src="https://github.com/user-attachments/assets/bc8d07e1-f52b-4fc5-b84b-82b70d5a04a8" />
 
-#### Step 2: Handle the Security Warning
+  <br><br><br>
+
+### Step 2: Handle the Security Warning
 
 The app will try to open automatically, but macOS will block it:
 
@@ -135,7 +278,9 @@ The app will try to open automatically, but macOS will block it:
 
 ![Security settings flow](https://github.com/user-attachments/assets/f3a4b427-7ad5-423f-8d0e-c5e32234dd03)
 
-#### Step 3: Grant Accessibility Permissions
+  <br><br><br>
+
+### Step 3: Grant Accessibility Permissions
 
 When the app opens, it will prompt you to grant Accessibility permissions:
 
@@ -146,13 +291,18 @@ When the app opens, it will prompt you to grant Accessibility permissions:
 
 ![Accessibility permissions](https://github.com/user-attachments/assets/2048915a-1892-499d-beb4-63ea30d92341)
 
-#### Step 4: Login and Use
+<br><br>
+
+### Step 4: Login and Use
 
 Enter your Matticspace credentials and you're ready to go!
 
 ---
 
-## Usage
+  <br><br><br><br><br>
+
+<h1 align="center"> Usage </h1>
+
 
 | Action | How |
 |--------|-----|
@@ -161,7 +311,9 @@ Enter your Matticspace credentials and you're ready to go!
 | **Set Custom Shortcut** | Menu bar > Set New Trigger |
 | **Auto-Start at Login** | Menu bar > Install Autolauncher |
 | **Quit the App** | Menu bar > Quit |
-
+ 
+  <br><br><br>
+  
 ### Customizing the Keyboard Shortcut
 
 Don't like Control+Space? You can set your own shortcut:
@@ -172,8 +324,13 @@ Don't like Control+Space? You can set your own shortcut:
 4. The new shortcut is saved automatically
 
 ---
-
-## Updating
+ 
+  <br><br><br>
+  
+<h1 align="center"> Updating </h1>
+ 
+  <br><br>
+  
 
 ### If you installed via Direct Download:
 
@@ -188,8 +345,11 @@ brew upgrade --cask macos-a8c-chat-overlay
 ```
 
 ---
+ 
+  <br><br><br>
+  
+<h1 align="center"> Uninstalling </h1>
 
-## Uninstalling
 
 ### If you installed via Direct Download:
 
@@ -212,15 +372,21 @@ brew uninstall --cask --zap macos-a8c-chat-overlay
 ```
 
 ---
+ 
+  <br><br><br>
+  
+<h1 align="center"> System Requirements </h1>
 
-## System Requirements
 
 - macOS 10.15 (Catalina) or later
 - Works only while connected to Automattic's proxy/VPN
 
 ---
+ 
+  <br><br><br>
+  
+<h1 align="center"> Troubleshooting </h1>
 
-## Troubleshooting
 
 ### "App is damaged and can't be opened"
 
@@ -263,8 +429,11 @@ Then try opening the app again.
 2. Try refreshing: Menu bar > Show, then close and reopen
 
 ---
-
-## Building from Source
+ 
+  <br><br><br>
+  
+<h1 align="center"> Building from Source </h1>
+ 
 
 For developers who want to build from source:
 
