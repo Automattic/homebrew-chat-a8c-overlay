@@ -215,3 +215,6 @@ dmg-builder/config.sh
 # DMG Builder - build artifacts (should be in dist/ but just in case)
 *.dmg
 *.zip
+
+# Claude Code guidance file (local only)
+CLAUDE.md

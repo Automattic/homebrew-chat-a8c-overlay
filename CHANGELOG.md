@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.20] - 2025-01-30
+
+### Added
+
+- **Reset Window Size**: New menu item to reset the overlay window to its default size (550x580) and center it on screen. Useful when the window edges are off-screen and cannot be grabbed to resize.
+
+- **Generic Error Page**: When navigation fails (e.g., proxy disconnected, network issues), a custom error page is now shown with a "Try Again" button. The error page displays the specific error code and description, with a helpful tip about the Automattic proxy.
+
+- **File Download Support (WIP)**: Added infrastructure for handling blob URL downloads (e.g., "Download as PNG" feature). JSON exports work; PNG downloads still have issues with blob URL timing that need further investigation.
+
+### Changed
+
+- **Mission Control Behavior**: The overlay now participates in Mission Control animations like a regular macOS window. Previously it stayed fixed while other windows moved during Mission Control gestures (four-finger swipe up).
+
+### Known Issues
+
+- PNG/image downloads from LibreChat's export feature don't work yet due to blob URL revocation timing. The blob URL is revoked before the app can fetch the data. JSON exports work correctly.
+
+---
+
 ## [0.0.19] - 2025-01-16
 
 ### Added
@@ -108,6 +128,7 @@ Custom keyboard shortcuts saved in `~/Library/Logs/macos-a8c-chat-overlay/custom
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.0.20 | 2025-01-30 | Reset window size, error page, Mission Control fix |
 | 0.0.19 | 2025-01-16 | Rebranding, new icon, accessibility prompt, external links |
 | 0.0.18 | 2025-01-12 | Documentation improvements |
 | 0.0.17 | 2025-01-10 | Custom shortcuts, autolauncher |

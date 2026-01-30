@@ -1,4 +1,5 @@
 # Python libraries
+import base64
 import os
 import sys
 
@@ -76,7 +77,6 @@ class AppDelegate(NSObject):
         self.window.setLevel_(NSFloatingWindowLevel)
         self.window.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces
-            | NSWindowCollectionBehaviorStationary
         )
         # Save the last position and size
         self.window.setFrameAutosaveName_(FRAME_SAVE_NAME)
@@ -124,12 +124,13 @@ class AppDelegate(NSObject):
         url = NSURL.URLWithString_(WEBSITE)
         request = NSURLRequest.requestWithURL_(url)
         self.webview.loadRequest_(request)
-        # Set up script message handler for background color changes
+        # Set up script message handlers
         configuration = self.webview.configuration()
         user_content_controller = configuration.userContentController()
         user_content_controller.addScriptMessageHandler_name_(self, "backgroundColorHandler")
+        user_content_controller.addScriptMessageHandler_name_(self, "downloadHandler")
         # Inject JavaScript to monitor background color changes
-        script = """
+        bg_color_script = """
             function _post(bg){try{const h=window.webkit?.messageHandlers?.backgroundColorHandler;h&&h.postMessage(bg);}catch(e){}}
             function _getColor(el){if(!el) return null; const c=getComputedStyle(el).backgroundColor; return (!c||c==='rgba(0, 0, 0, 0)'||c==='transparent')?null:c;}
             function sendBackgroundColor(){
@@ -140,8 +141,84 @@ class AppDelegate(NSObject):
             window.addEventListener('load', sendBackgroundColor);
             new MutationObserver(sendBackgroundColor).observe(document.documentElement,{attributes:true,attributeFilter:['style'],subtree:true,childList:true});
         """
-        user_script = WKUserScript.alloc().initWithSource_injectionTime_forMainFrameOnly_(script, WKUserScriptInjectionTimeAtDocumentEnd, True)
-        user_content_controller.addUserScript_(user_script)
+        bg_user_script = WKUserScript.alloc().initWithSource_injectionTime_forMainFrameOnly_(bg_color_script, WKUserScriptInjectionTimeAtDocumentEnd, True)
+        user_content_controller.addUserScript_(bg_user_script)
+        # Inject JavaScript to intercept blob URL downloads (e.g., "Download as PNG")
+        # This script stores blobs when created and intercepts programmatic anchor clicks
+        download_script = """
+            (function() {
+                // Store blobs when they're created so we can access them even after revocation
+                const blobStore = new Map();
+                const originalCreateObjectURL = URL.createObjectURL;
+                const originalRevokeObjectURL = URL.revokeObjectURL;
+
+                URL.createObjectURL = function(blob) {
+                    const url = originalCreateObjectURL.call(this, blob);
+                    if (blob instanceof Blob) {
+                        blobStore.set(url, blob);
+                    }
+                    return url;
+                };
+
+                // Delay revocation to allow download interception
+                URL.revokeObjectURL = function(url) {
+                    setTimeout(() => {
+                        blobStore.delete(url);
+                        originalRevokeObjectURL.call(this, url);
+                    }, 1000);
+                };
+
+                // Intercept programmatic clicks on anchor elements
+                const originalClick = HTMLAnchorElement.prototype.click;
+                HTMLAnchorElement.prototype.click = function() {
+                    if (this.hasAttribute('download') && this.href && this.href.startsWith('blob:')) {
+                        const filename = this.download || 'download';
+                        const blobUrl = this.href;
+                        const blob = blobStore.get(blobUrl);
+
+                        if (blob) {
+                            // We have the blob stored, use it directly
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const base64Data = reader.result.split(',')[1];
+                                window.webkit.messageHandlers.downloadHandler.postMessage({
+                                    filename: filename,
+                                    data: base64Data,
+                                    mimeType: blob.type
+                                });
+                            };
+                            reader.readAsDataURL(blob);
+                            return; // Don't call original click
+                        }
+                    }
+                    return originalClick.call(this);
+                };
+
+                // Also handle regular click events on download links
+                document.addEventListener('click', function(e) {
+                    const anchor = e.target.closest('a[download]');
+                    if (!anchor || !anchor.href || !anchor.href.startsWith('blob:')) return;
+
+                    const blob = blobStore.get(anchor.href);
+                    if (blob) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64Data = reader.result.split(',')[1];
+                            window.webkit.messageHandlers.downloadHandler.postMessage({
+                                filename: anchor.download || 'download',
+                                data: base64Data,
+                                mimeType: blob.type
+                            });
+                        };
+                        reader.readAsDataURL(blob);
+                    }
+                }, true);
+            })();
+        """
+        download_user_script = WKUserScript.alloc().initWithSource_injectionTime_forMainFrameOnly_(download_script, WKUserScriptInjectionTimeAtDocumentStart, True)
+        user_content_controller.addUserScript_(download_user_script)
         # Create status bar item with template icon (auto-adapts to light/dark mode)
         self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSSquareStatusItemLength)
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -165,6 +242,10 @@ class AppDelegate(NSObject):
         clear_data_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Clear Web Cache", "clearWebViewData:", "")
         clear_data_item.setTarget_(self)
         menu.addItem_(clear_data_item)
+        # Reset window size (useful when window is off-screen)
+        reset_size_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Reset Window Size", "resetWindowSize:", "")
+        reset_size_item.setTarget_(self)
+        menu.addItem_(reset_size_item)
         # Microphone.
         mic_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Request Microphone Access", "requestMicrophoneAccess:", "")
         mic_item.setTarget_(self)
@@ -247,7 +328,23 @@ class AppDelegate(NSObject):
     # Hide the overlay and allow focus to return to the next visible application.
     def hideWindow_(self, sender):
         NSApp.hide_(None)
-    
+
+    # Reset window to default size and center on screen (useful when edges are off-screen).
+    def resetWindowSize_(self, sender):
+        default_width = 550
+        default_height = 580
+        # Get the current screen (where the window is, or main screen as fallback)
+        screen = self.window.screen() or NSScreen.mainScreen()
+        screen_frame = screen.visibleFrame()
+        # Calculate centered position
+        x = screen_frame.origin.x + (screen_frame.size.width - default_width) / 2
+        y = screen_frame.origin.y + (screen_frame.size.height - default_height) / 2
+        # Set the new frame
+        new_frame = NSMakeRect(x, y, default_width, default_height)
+        self.window.setFrame_display_animate_(new_frame, True, True)
+        # Make sure window is visible
+        self.showWindow_(None)
+
     # Go to the default landing website for the overlay (in case accidentally navigated away).
     def goToWebsite_(self, sender):
         url = NSURL.URLWithString_(WEBSITE)
@@ -351,7 +448,7 @@ class AppDelegate(NSObject):
         self.drag_area.setFrame_(NSMakeRect(0, h - DRAG_AREA_HEIGHT, w, DRAG_AREA_HEIGHT))
         self.webview.setFrame_(NSMakeRect(0, 0, w, h - DRAG_AREA_HEIGHT))
 
-    # Handler for setting the background color based on the web page background color.
+    # Handler for script messages from JavaScript (background color and downloads)
     def userContentController_didReceiveScriptMessage_(self, userContentController, message):
         if message.name() == "backgroundColorHandler":
             bg_color_str = message.body()
@@ -361,13 +458,59 @@ class AppDelegate(NSObject):
                 r, g, b = [val / 255.0 for val in rgb_values[:3]]
                 color = NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0)
                 self.drag_area.setBackgroundColor_(color)
+        elif message.name() == "downloadHandler":
+            self._handleDownload(message.body())
+
+    # Handle file downloads from blob URLs
+    @objc.python_method
+    def _handleDownload(self, download_info):
+        try:
+            filename = download_info.get("filename", "download")
+            base64_data = download_info.get("data", "")
+            mime_type = download_info.get("mimeType", "application/octet-stream")
+            # Decode base64 data
+            file_data = base64.b64decode(base64_data)
+            # Determine file extension if not present
+            if "." not in filename:
+                ext_map = {
+                    "image/png": ".png",
+                    "image/jpeg": ".jpg",
+                    "image/gif": ".gif",
+                    "image/webp": ".webp",
+                    "application/pdf": ".pdf",
+                }
+                filename += ext_map.get(mime_type, "")
+            # Save to Downloads folder with duplicate handling
+            downloads_path = os.path.expanduser("~/Downloads")
+            save_path = os.path.join(downloads_path, filename)
+            # Handle duplicate filenames
+            base_name, ext = os.path.splitext(save_path)
+            counter = 1
+            while os.path.exists(save_path):
+                save_path = f"{base_name} ({counter}){ext}"
+                counter += 1
+            # Write the file
+            with open(save_path, "wb") as f:
+                f.write(file_data)
+            print(f"Downloaded: {save_path}", flush=True)
+            # Reveal file in Finder
+            NSWorkspace.sharedWorkspace().selectFile_inFileViewerRootedAtPath_(save_path, "")
+        except Exception as e:
+            print(f"Download failed: {e}", flush=True)
 
 
-    # Navigation delegate method to handle link clicks
+    # Navigation delegate method to handle link clicks and blob downloads
     def webView_decidePolicyForNavigationAction_decisionHandler_(self, webView, navigationAction, decisionHandler):
         request = navigationAction.request()
         url = request.URL()
         url_string = url.absoluteString() if url else ""
+        # Intercept blob: URLs for download (WKWebView can't load these natively)
+        if url_string.startswith("blob:"):
+            print(f"Intercepting blob URL for download: {url_string}", flush=True)
+            # Cancel navigation and trigger download via JavaScript
+            decisionHandler(0)  # WKNavigationActionPolicyCancel = 0
+            self._downloadBlobURL(url_string)
+            return
         # Get the navigation type (link click, form submit, etc.)
         nav_type = navigationAction.navigationType()
         # WKNavigationTypeLinkActivated = 0 (user clicked a link)
@@ -384,6 +527,133 @@ class AppDelegate(NSObject):
                 return
         # Allow all other navigations (internal links, initial page load, etc.)
         decisionHandler(1)  # WKNavigationActionPolicyAllow = 1
+
+    # Download a blob URL by fetching it via JavaScript and passing to native handler
+    @objc.python_method
+    def _downloadBlobURL(self, blob_url):
+        # Use JavaScript to fetch the blob and convert to base64
+        js_code = f"""
+        (function() {{
+            fetch('{blob_url}')
+                .then(r => r.blob())
+                .then(blob => {{
+                    const reader = new FileReader();
+                    reader.onloadend = () => {{
+                        const base64Data = reader.result.split(',')[1];
+                        window.webkit.messageHandlers.downloadHandler.postMessage({{
+                            filename: 'download',
+                            data: base64Data,
+                            mimeType: blob.type
+                        }});
+                    }};
+                    reader.readAsDataURL(blob);
+                }})
+                .catch(err => console.error('Blob download failed:', err));
+        }})();
+        """
+        self.webview.evaluateJavaScript_completionHandler_(js_code, None)
+
+    # Navigation delegate method to handle load failures
+    def webView_didFailProvisionalNavigation_withError_(self, webView, navigation, error):
+        error_code = error.code()
+        error_description = error.localizedDescription()
+        print(f"Navigation failed: {error_code} - {error_description}", flush=True)
+        self._showErrorPage(error_code, error_description)
+
+    # Show a custom error page when navigation fails
+    @objc.python_method
+    def _showErrorPage(self, error_code, error_description):
+        error_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {{
+            color-scheme: light dark;
+        }}
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: light-dark(#f5f5f7, #1d1d1f);
+            color: light-dark(#1d1d1f, #f5f5f7);
+        }}
+        .container {{
+            text-align: center;
+            max-width: 400px;
+        }}
+        .icon {{
+            font-size: 64px;
+            margin-bottom: 20px;
+        }}
+        h1 {{
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }}
+        .message {{
+            font-size: 16px;
+            color: light-dark(#6e6e73, #a1a1a6);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }}
+        .retry-btn {{
+            background: #0071e3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }}
+        .retry-btn:hover {{
+            background: #0077ed;
+        }}
+        .retry-btn:active {{
+            background: #006edb;
+        }}
+        .error-details {{
+            margin-top: 24px;
+            padding: 12px;
+            background: light-dark(#e8e8ed, #2d2d2d);
+            border-radius: 8px;
+            font-size: 12px;
+            color: light-dark(#86868b, #8e8e93);
+        }}
+        .tip {{
+            margin-top: 16px;
+            font-size: 13px;
+            color: light-dark(#86868b, #8e8e93);
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚠️</div>
+        <h1>Something went wrong</h1>
+        <p class="message">The page could not be loaded. Please check your connection and try again.</p>
+        <button class="retry-btn" onclick="window.location.href='{WEBSITE}'">Try Again</button>
+        <div class="error-details">
+            Error {error_code}: {error_description}
+        </div>
+        <p class="tip">Tip: Make sure you're connected to the Automattic proxy</p>
+    </div>
+</body>
+</html>
+"""
+        self.webview.loadHTMLString_baseURL_(error_html, None)
 
     # Show initial prompt explaining accessibility permissions are needed
     def showAccessibilityPrompt(self):
