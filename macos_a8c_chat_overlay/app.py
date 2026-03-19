@@ -9,7 +9,7 @@ from AppKit import *
 from WebKit import *
 from Quartz import *
 from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
-from Foundation import NSObject, NSURL, NSURLRequest, NSDate
+from Foundation import NSObject, NSURL, NSURLRequest, NSDate, NSHTTPCookie, NSHTTPCookieStorage
 from ApplicationServices import AXIsProcessTrusted
 
 # Local libraries
@@ -31,6 +31,7 @@ from .listener import (
     load_custom_launcher_trigger,
     set_custom_launcher_trigger,
 )
+from .browser_cookies import read_browser_cookies
 
 
 # Custom window (contains entire application).
@@ -120,6 +121,9 @@ class AppDelegate(NSObject):
         # Update the webview sizinug and insert it below drag area.
         content_view.addSubview_(self.webview)
         self.webview.setFrame_(NSMakeRect(0, 0, content_bounds.size.width, content_bounds.size.height - DRAG_AREA_HEIGHT))
+        # SSO: track whether browser auth is in progress
+        self._sso_browser_auth = False
+        self._sso_retry_count = 0
         # Contat the target website.
         url = NSURL.URLWithString_(WEBSITE)
         request = NSURLRequest.requestWithURL_(url)
@@ -129,6 +133,7 @@ class AppDelegate(NSObject):
         user_content_controller = configuration.userContentController()
         user_content_controller.addScriptMessageHandler_name_(self, "backgroundColorHandler")
         user_content_controller.addScriptMessageHandler_name_(self, "downloadHandler")
+        user_content_controller.addScriptMessageHandler_name_(self, "ssoCompleteHandler")
         # Inject JavaScript to monitor background color changes
         bg_color_script = """
             function _post(bg){try{const h=window.webkit?.messageHandlers?.backgroundColorHandler;h&&h.postMessage(bg);}catch(e){}}
@@ -460,6 +465,8 @@ class AppDelegate(NSObject):
                 self.drag_area.setBackgroundColor_(color)
         elif message.name() == "downloadHandler":
             self._handleDownload(message.body())
+        elif message.name() == "ssoCompleteHandler":
+            self.ssoCompleteHandler_(message)
 
     # Handle file downloads from blob URLs
     @objc.python_method
@@ -511,13 +518,37 @@ class AppDelegate(NSObject):
             decisionHandler(0)  # WKNavigationActionPolicyCancel = 0
             self._downloadBlobURL(url_string)
             return
+        host = url.host() if url else None
+        # WordPress.com SSO: WebAuthn (security keys) doesn't work in WKWebView,
+        # so we handle the OAuth flow in ASWebAuthenticationSession which uses
+        # Safari's full browser capabilities including WebAuthn support.
+        if host == "public-api.wordpress.com":
+            # Auto-retry: if we just imported cookies and SSO still triggers,
+            # retry with a delay (browser may not have flushed cookies to disk yet)
+            if self._sso_retry_count > 0 and self._sso_retry_count <= 3:
+                print(f"SSO: auto-retry {self._sso_retry_count}/3 (waiting 2s)", flush=True)
+                decisionHandler(0)
+                self._sso_retry_count += 1
+                # Delay before retry to let the browser flush cookies to disk
+                NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                    2.0, self, "ssoAutoRetry:", None, False)
+                return
+            if self._sso_retry_count > 3:
+                # Give up retrying, show the waiting page again
+                self._sso_retry_count = 0
+            print(f"SSO redirect detected, opening default browser", flush=True)
+            decisionHandler(0)  # Cancel navigation in WKWebView
+            self._sso_browser_auth = True
+            self._showSSOWaitingPage()
+            # Open chat.a8c.com in the user's default browser for authentication
+            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(WEBSITE))
+            return
         # Get the navigation type (link click, form submit, etc.)
         nav_type = navigationAction.navigationType()
         # WKNavigationTypeLinkActivated = 0 (user clicked a link)
         # Check if this is a user-initiated link click
         if nav_type == 0:  # Link activated by user click
             # Check if the URL is external (not chat.a8c.com)
-            host = url.host() if url else None
             if host and host not in ["chat.a8c.com", "www.chat.a8c.com"]:
                 # Open external link in default browser
                 print(f"Opening external link in browser: {url_string}", flush=True)
@@ -527,6 +558,186 @@ class AppDelegate(NSObject):
                 return
         # Allow all other navigations (internal links, initial page load, etc.)
         decisionHandler(1)  # WKNavigationActionPolicyAllow = 1
+
+    # Handler for "I've signed in" button on the SSO waiting page
+    def ssoCompleteHandler_(self, message):
+        if message.body() == "done":
+            self._sso_retry_count = 1  # Enable auto-retry on next SSO redirect
+            self._importBrowserCookiesAndReload()
+
+    # Read cookies from the user's default browser and set them in WKWebView
+    @objc.python_method
+    def _importBrowserCookiesAndReload(self):
+        self._sso_browser_auth = False
+        domains = ["%chat.a8c.com%", "%.wordpress.com%", "%wordpress.com"]
+        browser_cookies = read_browser_cookies(domains)
+        if not browser_cookies:
+            print("SSO: no cookies found in browser", flush=True)
+            self._showSSOErrorPage("No session found in your browser. Please sign in to chat.a8c.com in your browser first, then try again.")
+            return
+        # Filter out connect.sid — it's a server-side session cookie tied to the browser.
+        # Importing it causes session conflicts when the browser also has chat.a8c.com open.
+        # Instead, we keep refreshToken/token_provider (JWT-based, creates a new session)
+        # and all WordPress.com auth cookies.
+        filtered = [c for c in browser_cookies if c["name"] != "connect.sid"]
+        print(f"SSO: filtered {len(browser_cookies)} → {len(filtered)} cookies (excluded connect.sid)", flush=True)
+        browser_cookies = filtered
+        # Clear ALL existing WKWebView data to avoid conflicts with stale sessions,
+        # cached redirects, or service workers — then set the fresh browser cookies
+        self._pending_browser_cookies = browser_cookies
+        self.webview.stopLoading()
+        from WebKit import WKWebsiteDataStore
+        data_store = self.webview.configuration().websiteDataStore()
+        all_types = WKWebsiteDataStore.allWebsiteDataTypes()
+        data_store.removeDataOfTypes_modifiedSince_completionHandler_(
+            all_types, NSDate.distantPast(), self._onWKCookiesCleared)
+
+    @objc.python_method
+    def _onWKCookiesCleared(self):
+        browser_cookies = self._pending_browser_cookies
+        self._pending_browser_cookies = None
+        print(f"SSO: cleared WKWebView cookies, setting {len(browser_cookies)} browser cookies", flush=True)
+        wk_cookie_store = self.webview.configuration().websiteDataStore().httpCookieStore()
+        remaining = [len(browser_cookies)]
+        def on_cookie_set():
+            remaining[0] -= 1
+            if remaining[0] <= 0:
+                print(f"SSO: all {len(browser_cookies)} cookies set, reloading in 2s", flush=True)
+                NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                    2.0, self, "ssoReloadAfterDelay:", None, False)
+        for bc in browser_cookies:
+            props = {
+                "Domain": bc["host"],
+                "Name": bc["name"],
+                "Value": bc["value"],
+                "Path": bc.get("path", "/"),
+            }
+            if bc.get("secure"):
+                props["Secure"] = "TRUE"
+            if bc.get("expiry") and bc["expiry"] > 0:
+                props["Expires"] = NSDate.dateWithTimeIntervalSince1970_(bc["expiry"])
+            cookie = NSHTTPCookie.cookieWithProperties_(props)
+            if cookie:
+                wk_cookie_store.setCookie_completionHandler_(cookie, on_cookie_set)
+            else:
+                # Skip invalid cookies, adjust counter
+                remaining[0] -= 1
+        if remaining[0] <= 0:
+            # All cookies were invalid or empty list
+            print("SSO: no valid cookies to set", flush=True)
+            self._showSSOErrorPage("Could not import browser cookies. Please try again.")
+
+    # Timer callback for auto-retry after SSO redirect
+    def ssoAutoRetry_(self, timer):
+        self._importBrowserCookiesAndReload()
+
+    # Timer callback to reload chat after cookies are set
+    def ssoReloadAfterDelay_(self, timer):
+        print("SSO: reloading chat.a8c.com now", flush=True)
+        self.webview.stopLoading()
+        url = NSURL.URLWithString_(WEBSITE)
+        request = NSURLRequest.requestWithURL_(url)
+        self.webview.loadRequest_(request)
+
+    # Show a waiting page while SSO authentication happens in the default browser
+    @objc.python_method
+    def _showSSOWaitingPage(self):
+        html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root { color-scheme: light dark; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px;
+            background: light-dark(#f5f5f7, #1d1d1f);
+            color: light-dark(#1d1d1f, #f5f5f7);
+        }
+        .container { text-align: center; max-width: 400px; }
+        .icon { font-size: 48px; margin-bottom: 16px; }
+        h1 { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+        .message {
+            font-size: 15px; color: light-dark(#6e6e73, #a1a1a6);
+            line-height: 1.5; margin-bottom: 24px;
+        }
+        .done-btn {
+            background: #0071e3; color: white; border: none;
+            padding: 12px 32px; font-size: 16px; font-weight: 500;
+            border-radius: 8px; cursor: pointer; transition: background 0.2s;
+        }
+        .done-btn:hover { background: #0077ed; }
+        .done-btn:active { background: #006edb; }
+        .tip {
+            margin-top: 16px; font-size: 13px;
+            color: light-dark(#86868b, #8e8e93);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">&#x1F310;</div>
+        <h1>Sign in with your browser</h1>
+        <p class="message">
+            A browser window has opened for WordPress.com sign-in.<br>
+            After you've signed in, come back here and click the button below.
+        </p>
+        <button class="done-btn" onclick="window.webkit.messageHandlers.ssoCompleteHandler.postMessage('done')">
+            I've signed in
+        </button>
+        <p class="tip">Chrome/Brave users: macOS may ask for Keychain access — click <b>Allow</b>.</p>
+        <p class="tip">Having issues? <a href="https://aip2.wordpress.com/2026/01/18/instant-librechat-access-with-a-keyboard-shortcut-%E2%9A%A1-librechat-a8c-overlay" style="color: #0071e3;">Report on the A8C Overlay P2</a></p>
+    </div>
+</body>
+</html>
+"""
+        self.webview.loadHTMLString_baseURL_(html, None)
+
+    # Show an error page when SSO cookie import fails
+    @objc.python_method
+    def _showSSOErrorPage(self, message):
+        html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {{ color-scheme: light dark; }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px;
+            background: light-dark(#f5f5f7, #1d1d1f);
+            color: light-dark(#1d1d1f, #f5f5f7);
+        }}
+        .container {{ text-align: center; max-width: 400px; }}
+        h1 {{ font-size: 22px; font-weight: 600; margin-bottom: 12px; }}
+        .message {{
+            font-size: 15px; color: light-dark(#6e6e73, #a1a1a6);
+            line-height: 1.5; margin-bottom: 24px;
+        }}
+        .retry-btn {{
+            background: #0071e3; color: white; border: none;
+            padding: 12px 32px; font-size: 16px; font-weight: 500;
+            border-radius: 8px; cursor: pointer;
+        }}
+        .retry-btn:hover {{ background: #0077ed; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sign-in incomplete</h1>
+        <p class="message">{message}</p>
+        <button class="retry-btn" onclick="window.location.href='{WEBSITE}'">Try Again</button>
+    </div>
+</body>
+</html>
+"""
+        self.webview.loadHTMLString_baseURL_(html, None)
 
     # Download a blob URL by fetching it via JavaScript and passing to native handler
     @objc.python_method
@@ -557,6 +768,11 @@ class AppDelegate(NSObject):
     def webView_didFailProvisionalNavigation_withError_(self, webView, navigation, error):
         error_code = error.code()
         error_description = error.localizedDescription()
+        # Error 102 = Frame load interrupted by policy change (e.g., SSO redirect cancelled).
+        # Error -999 = NSURLErrorCancelled. Both are expected when we cancel for SSO.
+        if error_code in (102, -999) and self._sso_browser_auth:
+            print(f"Navigation cancelled for SSO (code {error_code}), ignoring", flush=True)
+            return
         print(f"Navigation failed: {error_code} - {error_description}", flush=True)
         self._showErrorPage(error_code, error_description)
 

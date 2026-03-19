@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.21] - 2026-03-19
+
+### Added
+
+- **WordPress.com SSO Support**: Authentication now works with the new WordPress.com Single Sign-On system. When sign-in is required, the overlay opens your default browser (Firefox, Chrome, Brave, Edge, Arc) for authentication, then imports the session automatically.
+
+- **Browser Cookie Import**: Reads authentication cookies directly from your default browser's cookie database. Firefox cookies are read in plaintext; Chrome/Chromium cookies are decrypted via macOS Keychain (one-time permission prompt).
+
+- **Default Browser Detection**: Automatically detects your default browser and uses the appropriate cookie extraction method.
+
+- **SSO Waiting Page**: Friendly in-overlay page guides users through the browser sign-in flow with a "I've signed in" button and link to the support P2.
+
+- **Auto-Retry**: If cookie import doesn't succeed on the first attempt, the overlay automatically retries up to 3 times with delays to allow the browser to flush cookies to disk.
+
+### Changed
+
+- **Authentication Flow**: Replaced the previous Mission Control (MC) direct authentication with a browser-based SSO flow that supports WordPress.com accounts and 2FA security keys.
+
+### Known Issues
+
+- Clearing the web cache while the app is running may require clicking "I've signed in" more than once. Restarting the app resolves this reliably.
+- Safari is not supported as the authentication browser (cookies are inaccessible on macOS Tahoe+). Use Firefox, Chrome, or another Chromium-based browser.
+
+---
+
 ## [0.0.20] - 2025-01-30
 
 ### Added
@@ -128,6 +153,7 @@ Custom keyboard shortcuts saved in `~/Library/Logs/macos-a8c-chat-overlay/custom
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.0.21 | 2026-03-19 | WordPress.com SSO support, browser cookie import |
 | 0.0.20 | 2025-01-30 | Reset window size, error page, Mission Control fix |
 | 0.0.19 | 2025-01-16 | Rebranding, new icon, accessibility prompt, external links |
 | 0.0.18 | 2025-01-12 | Documentation improvements |
