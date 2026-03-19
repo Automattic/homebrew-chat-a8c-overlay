@@ -194,24 +194,50 @@ https://github.com/user-attachments/assets/bc4fb716-6efb-4baa-a5e6-7f9ce43fccfb
 
 
 
-<h3 align="center"> Step 6: Login with Your Credentials </h3>
+<h3 align="center"> Step 6: Sign In with WordPress.com </h3>
 
 <table>
   <tr>
-    <td width="40%" valign="middle" style="padding-right: 16px;">
+    <td width="50%" valign="middle" style="padding-right: 16px;">
 
-After the app restarts, you'll see the chat.a8c.com login page. Enter your Matticspace credentials to log in.
+The overlay now uses **WordPress.com SSO** for authentication. Here's what to expect:
+
+1. The overlay will detect that you need to sign in and **open your default browser** (Chrome, Firefox, etc.) to `chat.a8c.com`
+2. You'll see a page in the overlay that says **"Sign in with your browser"** with a button
+3. **In your browser**, complete the WordPress.com sign-in (including your security key or Touch ID if prompted)
+4. Once you're signed in and can see chat.a8c.com in your browser, **switch back to the overlay**
+5. Click the **"I've signed in"** button
+6. **Wait a few seconds** — the overlay will import your session from the browser and load the chat
 
    </td>
-    <td width="60%" valign="top">
+    <td width="50%" valign="middle">
 
-https://github.com/user-attachments/assets/9e081939-42ab-4c98-b454-349fcf7e8f1a
-
-<sub>▶️ Step 6 login with matticspace credentials</sub>
+> **Tips for a smooth sign-in:**
+>
+> - Make sure you're **already signed in** to `chat.a8c.com` in your browser before clicking the button. If not, sign in first, then click it.
+> - **Wait 5-10 seconds** after signing in before clicking the button — this gives your browser time to save the session.
+> - If it doesn't work on the first try, **click the button again**. It may take 2-3 attempts on the very first sign-in.
+> - Once signed in, the session persists — you won't need to do this again unless you clear the overlay's cache.
 
    </td>
   </tr>
 </table>
+
+<br>
+
+<h4 align="center"> Chrome / Brave / Edge users: Keychain access </h4>
+
+<p align="center">
+The overlay reads your browser's cookies to import the session. For Chrome-based browsers, macOS will show a <b>Keychain access prompt</b> asking for your password — <b>this is normal and expected</b>. The overlay needs to decrypt your browser's cookies to import your sign-in session. Click <b>Allow</b> (or <b>Always Allow</b> to avoid the prompt in the future).
+</p>
+
+<p align="center">
+Firefox users will not see this prompt, as Firefox stores cookies without encryption.
+</p>
+
+<br>
+
+> **Having issues with sign-in?** Post on the [LibreChat A8C Overlay P2](https://aip2.wordpress.com/2026/01/18/instant-librechat-access-with-a-keyboard-shortcut-%E2%9A%A1-librechat-a8c-overlay) and we'll help you out.
 
 <br><br><br>
 
@@ -220,8 +246,6 @@ https://github.com/user-attachments/assets/9e081939-42ab-4c98-b454-349fcf7e8f1a
 <table>
   <tr>
     <td width="40%" valign="middle" style="padding-right: 16px;">
-
-The app needs Accessibility permissions to detect your keyboard shortcut. When you first open the app:
 
 Press **Control+Space** anywhere on your Mac to show or hide the chat overlay.
 
@@ -293,9 +317,9 @@ When the app opens, it will prompt you to grant Accessibility permissions:
 
 <br><br>
 
-### Step 4: Login and Use
+### Step 4: Sign In with WordPress.com
 
-Enter your Matticspace credentials and you're ready to go!
+The overlay will open your default browser for WordPress.com authentication. Sign in there, then click the **"I've signed in"** button in the overlay. See **Step 6** in the Direct Download instructions above for detailed tips.
 
 ---
 
@@ -422,6 +446,16 @@ Then try opening the app again.
 1. Check if the app is running in Activity Monitor
 2. Try quitting and reopening the app
 3. Make sure you're not in full-screen mode (some full-screen apps hide menu bar icons)
+
+### Sign-in doesn't work / keeps showing "Sign in with your browser"
+
+1. Make sure you're **signed in to chat.a8c.com in your browser** before clicking the button
+2. **Wait 5-10 seconds** after signing in — your browser needs time to save cookies to disk
+3. Try clicking **"I've signed in"** again — it may take 2-3 attempts on the first sign-in
+4. **Chrome/Brave/Edge users**: If macOS asks for your password to access the Keychain, click **Allow**. This is required to read your browser's session cookies.
+5. If using Chrome, try closing any open `chat.a8c.com` tabs in the browser, then click the button
+6. **Safari is not supported** as the authentication browser. Use Chrome, Firefox, Brave, or Edge.
+7. As a last resort, quit the overlay app completely and reopen it
 
 ### Login page doesn't load
 
