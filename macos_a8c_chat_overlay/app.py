@@ -1,5 +1,6 @@
 # Python libraries
 import base64
+import json
 import os
 import sys
 
@@ -32,6 +33,9 @@ from .listener import (
     set_custom_launcher_trigger,
 )
 from .browser_cookies import read_browser_cookies
+from .health_checks import LOG_DIR
+
+KEEP_ON_TOP_FILE = LOG_DIR / "keep_on_top.json"
 
 
 # Custom window (contains entire application).
@@ -65,8 +69,8 @@ class DragArea(NSView):
 class AppDelegate(NSObject):
     # The main application setup.
     def applicationDidFinishLaunching_(self, notification):
-        # Run as accessory app
-        NSApp.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+        # Load keep-on-top preference (default True)
+        self.keep_on_top = self._load_keep_on_top_pref()
         # Create a borderless, floating, resizable window
         self.window = AppWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(500, 200, 550, 580),
@@ -75,7 +79,7 @@ class AppDelegate(NSObject):
             NSBackingStoreBuffered,
             False
         )
-        self.window.setLevel_(NSFloatingWindowLevel)
+        self._apply_keep_on_top()
         self.window.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces
         )
@@ -241,6 +245,10 @@ class AppDelegate(NSObject):
         hide_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Hide "+APP_TITLE, "hideWindow:", "h")
         hide_item.setTarget_(self)
         menu.addItem_(hide_item)
+        self.keep_on_top_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Keep Window on Top", "toggleKeepOnTop:", "")
+        self.keep_on_top_item.setTarget_(self)
+        self.keep_on_top_item.setState_(NSControlStateValueOn if self.keep_on_top else NSControlStateValueOff)
+        menu.addItem_(self.keep_on_top_item)
         home_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Home", "goToWebsite:", "g")
         home_item.setTarget_(self)
         menu.addItem_(home_item)
@@ -333,6 +341,36 @@ class AppDelegate(NSObject):
     # Hide the overlay and allow focus to return to the next visible application.
     def hideWindow_(self, sender):
         NSApp.hide_(None)
+
+    # Load keep-on-top preference from disk (defaults to True).
+    def _load_keep_on_top_pref(self):
+        try:
+            if KEEP_ON_TOP_FILE.exists():
+                with open(KEEP_ON_TOP_FILE, "r") as f:
+                    return json.load(f).get("keep_on_top", True)
+        except Exception:
+            pass
+        return True
+
+    # Apply the current keep_on_top state to the window level and activation policy.
+    def _apply_keep_on_top(self):
+        if self.keep_on_top:
+            self.window.setLevel_(NSFloatingWindowLevel)
+            NSApp.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+        else:
+            self.window.setLevel_(NSNormalWindowLevel)
+            NSApp.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+
+    # Toggle always-on-top and Dock visibility.
+    def toggleKeepOnTop_(self, sender):
+        self.keep_on_top = not self.keep_on_top
+        self._apply_keep_on_top()
+        self.keep_on_top_item.setState_(
+            NSControlStateValueOn if self.keep_on_top else NSControlStateValueOff
+        )
+        with open(KEEP_ON_TOP_FILE, "w") as f:
+            json.dump({"keep_on_top": self.keep_on_top}, f)
+        self.showWindow_(None)
 
     # Reset window to default size and center on screen (useful when edges are off-screen).
     def resetWindowSize_(self, sender):
