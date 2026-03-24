@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.22] - 2026-03-23
+
+### Added
+
+- **Keep Window on Top Toggle**: New menu item in the status bar to toggle whether the overlay window floats above all other apps. When disabled, the window behaves like a regular app window and becomes visible in the Dock and Cmd+Tab switcher. Preference persists across app restarts. (Contributed by @therocket-gr)
+
+---
+
 ## [0.0.21] - 2026-03-19
 
 ### Added
