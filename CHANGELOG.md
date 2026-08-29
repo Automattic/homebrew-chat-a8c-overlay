@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.23] - 2026-08-29
+
+### Fixed
+
+- **"@" Agent Mentions**: Typing `@` in the composer opened the agent/model picker and then closed it again a moment later, making it impossible to switch agents mid-conversation from the overlay. LibreChat focuses the picker's search box and then resets the composer's text selection; under WKWebView that selection call pulls focus back to the composer, so the picker blurred immediately and closed itself. The overlay now stops an unfocused text field from stealing focus that way, matching how Chrome and Firefox behave. The `+`, `/` and `$` command pickers are fixed by the same change.
+
+---
+
 ## [0.0.22] - 2026-03-23
 
 ### Added
