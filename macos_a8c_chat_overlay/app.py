@@ -228,6 +228,35 @@ class AppDelegate(NSObject):
         """
         download_user_script = WKUserScript.alloc().initWithSource_injectionTime_forMainFrameOnly_(download_script, WKUserScriptInjectionTimeAtDocumentStart, True)
         user_content_controller.addUserScript_(download_user_script)
+        # Work around a WebKit-only behaviour: setSelectionRange() on a text control that
+        # is NOT focused moves focus to that control (Chrome and Firefox leave focus alone).
+        # LibreChat's "@" / "+" / "/" / "$" command popovers focus their own search box and
+        # then reset the composer textarea's selection, so under WKWebView the search box is
+        # blurred the instant it opens and the popover's blur timer closes it ~150ms later.
+        # Skipping the call when the control isn't focused matches the other browsers; the
+        # selection of an unfocused control isn't user-visible anyway.
+        webkit_focus_fix_script = """
+            (function() {
+                function guard(proto) {
+                    if (!proto || !proto.setSelectionRange || proto.setSelectionRange.__focusGuard) {
+                        return;
+                    }
+                    var original = proto.setSelectionRange;
+                    function setSelectionRange() {
+                        if (document.activeElement !== this) {
+                            return;
+                        }
+                        return original.apply(this, arguments);
+                    }
+                    setSelectionRange.__focusGuard = true;
+                    proto.setSelectionRange = setSelectionRange;
+                }
+                guard(window.HTMLTextAreaElement && HTMLTextAreaElement.prototype);
+                guard(window.HTMLInputElement && HTMLInputElement.prototype);
+            })();
+        """
+        webkit_focus_fix_user_script = WKUserScript.alloc().initWithSource_injectionTime_forMainFrameOnly_(webkit_focus_fix_script, WKUserScriptInjectionTimeAtDocumentStart, True)
+        user_content_controller.addUserScript_(webkit_focus_fix_user_script)
         # Create status bar item with template icon (auto-adapts to light/dark mode)
         self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSSquareStatusItemLength)
         script_dir = os.path.dirname(os.path.abspath(__file__))
