@@ -1,6 +1,6 @@
 cask "macos-a8c-chat-overlay" do
-  version "0.0.22"
-  sha256 "d3c9207850182559ad63513d1ba09acbc3e108d6b631c97606571166545c200b"
+  version "0.0.23"
+  sha256 "ec25e2c2673e3a680713938312d2df8271ec715a5c13db3a863cc81c15ad92b3"
 
   url "https://github.com/Automattic/homebrew-chat-a8c-overlay/releases/download/v#{version}/LibreChat-A8C-Overlay.zip"
   name "LibreChat A8C Overlay"
